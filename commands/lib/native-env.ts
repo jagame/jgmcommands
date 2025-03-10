@@ -1,0 +1,1 @@
+export const USER_HOME = (Deno.env.get("HOME") || Deno.env.get("USERPROFILE"))!
