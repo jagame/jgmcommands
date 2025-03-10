@@ -1,8 +1,10 @@
 #!/usr/bin/env -S deno --allow-all --ext ts
-import { PlainConfigurer } from "./plain-configurer.ts";
-import { ConfigLocation, ConfigLocations } from "./config-location.ts";
 
-type Operation = keyof Pick<PlainConfigurer, "get" | "set">
+import { ConfigService } from "./application/config-service.ts";
+import { JsonConfigLocations, JsonConfigLocator } from "./infrastructure/json/json-config-locators.ts";
+import { JsonConfigRepositoryFactory } from "./infrastructure/json/json-config-repository-factory.ts";
+
+type Operation = keyof Pick<ConfigService<JsonConfigLocator>, "get" | "set">
 
 function getOperation(arg: string): Operation {
     if (arg != "get" && arg != "set") {
@@ -11,12 +13,12 @@ function getOperation(arg: string): Operation {
     return arg
 }
 
-function getLocation(arg: string): ConfigLocation {
+function getLocator(arg: string): JsonConfigLocator {
     const locationName = arg?.toUpperCase()
     if (locationName != "LOCAL" && locationName != "GLOBAL") {
         throw `Illegal argument ${arg}`
     }
-    return ConfigLocations[locationName]
+    return JsonConfigLocations[locationName]
 }
 
 function getValue(arg: string, operation: Operation): string | undefined {
@@ -48,13 +50,12 @@ if (["--help", "-h"].includes(Deno.args[0])) {
 try {
     const group: string = reqArgument(0)
     const operation: Operation = getOperation(reqArgument(1))
-    const location: ConfigLocation = getLocation(reqArgument(2))
+    const locator: JsonConfigLocator = getLocator(reqArgument(2))
     const property: string = reqArgument(3)
     const value: string | undefined = getValue(Deno.args[4], operation)
 
-    const configurer = new PlainConfigurer(group, location)
-    configurer[operation](property, value)
-    configurer.save()
+    const service = new ConfigService(new JsonConfigRepositoryFactory())
+    service[operation]({locator, group, property, value})
 } catch (error) {
     printHelp()
     console.log()
